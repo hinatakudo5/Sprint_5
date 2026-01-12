@@ -2,10 +2,18 @@ import random
 import string
 import uuid
 
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from locators import LoginPageLocators
+from locators import BASE_URL, RegisterPageLocators, LoginPageLocators
+
+
+def _loc(cls, *names):
+    for name in names:
+        if hasattr(cls, name):
+            return getattr(cls, name)
+    return None
 
 
 def generate_email(domain: str = "ya.ru") -> str:
@@ -40,14 +48,37 @@ def generate_name() -> str:
 def login_user(driver, email: str, password: str) -> None:
     wait = WebDriverWait(driver, 15)
 
-    wait.until(
-        EC.visibility_of_element_located(LoginPageLocators.EMAIL_INPUT)
-    ).send_keys(email)
+    email_input = _loc(LoginPageLocators, "EMAIL_INPUT", "EMAIL_FIELD", "EMAIL")
+    password_input = _loc(LoginPageLocators, "PASSWORD_INPUT", "PASSWORD_FIELD", "PASSWORD")
 
-    wait.until(
-        EC.visibility_of_element_located(LoginPageLocators.PASSWORD_INPUT)
-    ).send_keys(password)
+    # кнопка "Войти" — берём по тексту, чтобы не зависеть от имени локатора
+    login_btn_fallback = (By.XPATH, "//button[contains(., 'Войти')]")
 
-    wait.until(
-        EC.element_to_be_clickable(LoginPageLocators.LOGIN_BUTTON)
-    ).click()
+    wait.until(EC.visibility_of_element_located(email_input)).send_keys(email)
+    wait.until(EC.visibility_of_element_located(password_input)).send_keys(password)
+    wait.until(EC.element_to_be_clickable(login_btn_fallback)).click()
+
+
+def register_user(driver, name: str, email: str, password: str) -> None:
+    wait = WebDriverWait(driver, 15)
+
+    driver.get(f"{BASE_URL}/register")
+
+    name_input = _loc(RegisterPageLocators, "NAME_INPUT", "NAME_FIELD", "NAME")
+    email_input = _loc(RegisterPageLocators, "EMAIL_INPUT", "EMAIL_FIELD", "EMAIL")
+    password_input = _loc(RegisterPageLocators, "PASSWORD_INPUT", "PASSWORD_FIELD", "PASSWORD")
+
+    # кнопка "Зарегистрироваться" — берём по тексту
+    register_btn_fallback = (By.XPATH, "//button[contains(., 'Зарегистрироваться')]")
+
+    wait.until(EC.visibility_of_element_located(name_input)).send_keys(name)
+    wait.until(EC.visibility_of_element_located(email_input)).send_keys(email)
+    wait.until(EC.visibility_of_element_located(password_input)).send_keys(password)
+    wait.until(EC.element_to_be_clickable(register_btn_fallback)).click()
+
+    # если после регистрации перекидывает на /login — логинимся
+    try:
+        wait.until(EC.url_contains("/login"))
+        login_user(driver, email, password)
+    except Exception:
+        pass
