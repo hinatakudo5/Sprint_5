@@ -5,7 +5,7 @@ import uuid
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from locators import RegisterPageLocators, LoginPageLocators, BASE_URL
+from locators import LoginPageLocators
 
 
 def generate_email(domain: str = "ya.ru") -> str:
@@ -22,7 +22,6 @@ def generate_password(length: int = 10) -> str:
     digits = string.digits
     all_chars = lower + upper + digits
 
-    # гарантируем: 1 маленькая, 1 большая, 1 цифра
     password_chars = [
         random.choice(lower),
         random.choice(upper),
@@ -34,34 +33,21 @@ def generate_password(length: int = 10) -> str:
     return "".join(password_chars)
 
 
-def generate_name(length: int = 8) -> str:
-    letters = string.ascii_letters
-    return "".join(random.choices(letters, k=length))
-
-
-def register_user(driver, name: str, email: str, password: str) -> None:
-    """
-    Регистрирует пользователя через UI.
-    После успешной регистрации страница перекидывает на /login.
-    """
-    wait = WebDriverWait(driver, 15)
-
-    driver.get(f"{BASE_URL}/register")
-
-    wait.until(EC.visibility_of_element_located(RegisterPageLocators.NAME)).send_keys(name)
-    wait.until(EC.visibility_of_element_located(RegisterPageLocators.EMAIL)).send_keys(email)
-    wait.until(EC.visibility_of_element_located(RegisterPageLocators.PASSWORD)).send_keys(password)
-
-    wait.until(EC.element_to_be_clickable(RegisterPageLocators.SUBMIT)).click()
-
-    # После регистрации ожидаем форму входа
-    wait.until(EC.visibility_of_element_located(LoginPageLocators.SUBMIT))
+def generate_name() -> str:
+    return f"User{random.randint(1000, 9999)}"
 
 
 def login_user(driver, email: str, password: str) -> None:
     wait = WebDriverWait(driver, 15)
 
-    wait.until(EC.visibility_of_element_located(LoginPageLocators.EMAIL)).send_keys(email)
-    wait.until(EC.visibility_of_element_located(LoginPageLocators.PASSWORD)).send_keys(password)
+    wait.until(
+        EC.visibility_of_element_located(LoginPageLocators.EMAIL_INPUT)
+    ).send_keys(email)
 
-    wait.until(EC.element_to_be_clickable(LoginPageLocators.SUBMIT)).click()
+    wait.until(
+        EC.visibility_of_element_located(LoginPageLocators.PASSWORD_INPUT)
+    ).send_keys(password)
+
+    wait.until(
+        EC.element_to_be_clickable(LoginPageLocators.LOGIN_BUTTON)
+    ).click()
