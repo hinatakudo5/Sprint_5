@@ -1,84 +1,103 @@
 import random
 import string
-import uuid
 
-from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from locators import BASE_URL, RegisterPageLocators, LoginPageLocators
+from locators import (
+    BASE_URL,
+    RegisterPageLocators,
+    LoginPageLocators,
+    MainPageLocators,
+)
 
 
-def _loc(cls, *names):
-    for name in names:
+def _first_existing_locator(cls, possible_names: tuple[str, ...]):
+    """
+    Возвращает первый существующий локатор из cls по списку имён.
+    Если не найден — возвращает None.
+    """
+    for name in possible_names:
         if hasattr(cls, name):
             return getattr(cls, name)
     return None
 
 
-def generate_email(domain: str = "ya.ru") -> str:
-    login = uuid.uuid4().hex[:10]
+# ---------- генераторы данных ----------
+
+def generate_email(domain="ya.ru"):
+    login = "".join(random.choices(string.ascii_lowercase + string.digits, k=10))
     return f"{login}@{domain}"
 
 
-def generate_password(length: int = 10) -> str:
-    if length < 6:
-        length = 6
-
-    lower = string.ascii_lowercase
-    upper = string.ascii_uppercase
-    digits = string.digits
-    all_chars = lower + upper + digits
-
-    password_chars = [
-        random.choice(lower),
-        random.choice(upper),
-        random.choice(digits),
-    ]
-
-    password_chars += random.choices(all_chars, k=length - len(password_chars))
-    random.shuffle(password_chars)
-    return "".join(password_chars)
+def generate_password(length: int = 10):
+    chars = string.ascii_letters + string.digits
+    return "".join(random.choices(chars, k=max(length, 6)))
 
 
-def generate_name() -> str:
+def generate_name():
     return f"User{random.randint(1000, 9999)}"
+
+
+# ---------- действия ----------
+
+def register_user(driver, name: str, email: str, password: str) -> None:
+    wait = WebDriverWait(driver, 15)
+    driver.get(f"{BASE_URL}/register")
+
+    wait.until(EC.visibility_of_element_located(RegisterPageLocators.NAME)).send_keys(name)
+    wait.until(EC.visibility_of_element_located(RegisterPageLocators.EMAIL)).send_keys(email)
+    wait.until(EC.visibility_of_element_located(RegisterPageLocators.PASSWORD)).send_keys(password)
+
+    # ✅ 1) пробуем найти кнопку регистрации в твоих локаторах (любое популярное имя)
+    register_button_locator = _first_existing_locator(
+        RegisterPageLocators,
+        (
+            "REGISTER",
+            "REGISTER_BUTTON",
+            "SUBMIT",
+            "SUBMIT_BUTTON",
+            "BUTTON_REGISTER",
+            "REGISTRATION_BUTTON",
+        ),
+    )
+
+    # ✅ 2) если в локаторах нет — кликаем по тексту кнопки
+    if register_button_locator is None:
+        register_button_locator = (
+            "xpath",
+            "//button[contains(., 'Зарегистрироваться')]",
+        )
+
+    wait.until(EC.element_to_be_clickable(register_button_locator)).click()
 
 
 def login_user(driver, email: str, password: str) -> None:
     wait = WebDriverWait(driver, 15)
 
-    email_input = _loc(LoginPageLocators, "EMAIL_INPUT", "EMAIL_FIELD", "EMAIL")
-    password_input = _loc(LoginPageLocators, "PASSWORD_INPUT", "PASSWORD_FIELD", "PASSWORD")
+    wait.until(EC.visibility_of_element_located(LoginPageLocators.EMAIL)).send_keys(email)
+    wait.until(EC.visibility_of_element_located(LoginPageLocators.PASSWORD)).send_keys(password)
 
-    # кнопка "Войти" — берём по тексту, чтобы не зависеть от имени локатора
-    login_btn_fallback = (By.XPATH, "//button[contains(., 'Войти')]")
+    # обычно это есть в локаторах, но на всякий случай сделаем fallback
+    login_button_locator = _first_existing_locator(
+        LoginPageLocators,
+        (
+            "LOGIN_BUTTON",
+            "SUBMIT_BUTTON",
+            "ENTER_BUTTON",
+            "LOGIN",
+        ),
+    )
 
-    wait.until(EC.visibility_of_element_located(email_input)).send_keys(email)
-    wait.until(EC.visibility_of_element_located(password_input)).send_keys(password)
-    wait.until(EC.element_to_be_clickable(login_btn_fallback)).click()
+    if login_button_locator is None:
+        login_button_locator = (
+            "xpath",
+            "//button[contains(., 'Войти')]",
+        )
+
+    wait.until(EC.element_to_be_clickable(login_button_locator)).click()
 
 
-def register_user(driver, name: str, email: str, password: str) -> None:
+def assert_logged_in(driver):
     wait = WebDriverWait(driver, 15)
-
-    driver.get(f"{BASE_URL}/register")
-
-    name_input = _loc(RegisterPageLocators, "NAME_INPUT", "NAME_FIELD", "NAME")
-    email_input = _loc(RegisterPageLocators, "EMAIL_INPUT", "EMAIL_FIELD", "EMAIL")
-    password_input = _loc(RegisterPageLocators, "PASSWORD_INPUT", "PASSWORD_FIELD", "PASSWORD")
-
-    # кнопка "Зарегистрироваться" — берём по тексту
-    register_btn_fallback = (By.XPATH, "//button[contains(., 'Зарегистрироваться')]")
-
-    wait.until(EC.visibility_of_element_located(name_input)).send_keys(name)
-    wait.until(EC.visibility_of_element_located(email_input)).send_keys(email)
-    wait.until(EC.visibility_of_element_located(password_input)).send_keys(password)
-    wait.until(EC.element_to_be_clickable(register_btn_fallback)).click()
-
-    # если после регистрации перекидывает на /login — логинимся
-    try:
-        wait.until(EC.url_contains("/login"))
-        login_user(driver, email, password)
-    except Exception:
-        pass
+    wait.until(EC.visibility_of_element_located(MainPageLocators.PERSONAL_ACCOUNT))
