@@ -1,81 +1,43 @@
-from selenium.webdriver.support.ui import WebDriverWait
+import pytest
 from selenium.webdriver.support import expected_conditions as EC
 
 from locators import BASE_URL, MainPageLocators, LoginPageLocators
-from helpers import generate_email, generate_password, generate_name, login_user
+from helpers import login_user, assert_logged_in
 
 
-def test_login_from_main_page_button(driver):
-    wait = WebDriverWait(driver, 15)
+class TestLogin:
+    def test_login_from_main_page_button(self, driver, wait, registered_user):
+        email, password = registered_user
 
-    email = generate_email()
-    password = generate_password()
+        driver.get(BASE_URL)
+        wait.until(EC.element_to_be_clickable(MainPageLocators.LOGIN_BUTTON)).click()
 
-    driver.get(BASE_URL)
+        login_user(driver, email, password)
+        assert_logged_in(driver)
 
-    wait.until(
-        EC.element_to_be_clickable(MainPageLocators.LOGIN_BUTTON)
-    ).click()
+    def test_login_from_personal_account_button(self, driver, wait, registered_user):
+        email, password = registered_user
 
-    login_user(driver, email, password)
+        driver.get(BASE_URL)
+        wait.until(EC.element_to_be_clickable(MainPageLocators.PERSONAL_ACCOUNT)).click()
 
-    wait.until(
-        EC.visibility_of_element_located(MainPageLocators.PERSONAL_ACCOUNT)
-    )
+        login_user(driver, email, password)
+        assert_logged_in(driver)
 
+    def test_login_from_register_form_link(self, driver, wait, registered_user):
+        email, password = registered_user
 
-def test_login_from_personal_account_button(driver):
-    wait = WebDriverWait(driver, 15)
+        driver.get(f"{BASE_URL}/register")
+        wait.until(EC.element_to_be_clickable(LoginPageLocators.LOGIN_LINK)).click()
 
-    email = generate_email()
-    password = generate_password()
+        login_user(driver, email, password)
+        assert_logged_in(driver)
 
-    driver.get(BASE_URL)
+    def test_login_from_forgot_password_form_link(self, driver, wait, registered_user):
+        email, password = registered_user
 
-    wait.until(
-        EC.element_to_be_clickable(MainPageLocators.PERSONAL_ACCOUNT)
-    ).click()
+        driver.get(f"{BASE_URL}/forgot-password")
+        wait.until(EC.element_to_be_clickable(LoginPageLocators.LOGIN_LINK)).click()
 
-    login_user(driver, email, password)
-
-    wait.until(
-        EC.visibility_of_element_located(MainPageLocators.PERSONAL_ACCOUNT)
-    )
-
-
-def test_login_from_register_form_link(driver):
-    wait = WebDriverWait(driver, 15)
-
-    email = generate_email()
-    password = generate_password()
-
-    driver.get(f"{BASE_URL}/register")
-
-    wait.until(
-        EC.element_to_be_clickable(LoginPageLocators.LOGIN_LINK)
-    ).click()
-
-    login_user(driver, email, password)
-
-    wait.until(
-        EC.visibility_of_element_located(MainPageLocators.PERSONAL_ACCOUNT)
-    )
-
-
-def test_login_from_forgot_password_form_link(driver):
-    wait = WebDriverWait(driver, 15)
-
-    email = generate_email()
-    password = generate_password()
-
-    driver.get(f"{BASE_URL}/forgot-password")
-
-    wait.until(
-        EC.element_to_be_clickable(LoginPageLocators.LOGIN_LINK)
-    ).click()
-
-    login_user(driver, email, password)
-
-    wait.until(
-        EC.visibility_of_element_located(MainPageLocators.PERSONAL_ACCOUNT)
-    )
+        login_user(driver, email, password)
+        assert_logged_in(driver)
