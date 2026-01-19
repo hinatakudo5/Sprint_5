@@ -30,13 +30,18 @@ class TestAccount:
         # переходим в Личный кабинет
         wait.until(EC.element_to_be_clickable(MainPageLocators.PERSONAL_ACCOUNT)).click()
 
-        # если вдруг редиректнуло на логин (так бывает), логинимся
+        # если вдруг редиректнуло на логин (так бывает), логинимся и снова открываем ЛК
         if "/login" in driver.current_url:
             login_user(driver, email, password)
             wait.until(EC.element_to_be_clickable(MainPageLocators.PERSONAL_ACCOUNT)).click()
 
-        # проверяем, что попали в профиль
-        wait.until(EC.visibility_of_element_located(AccountPageLocators.PROFILE_LINK))
+        # ждём появления элемента профиля
+        profile_link = wait.until(
+            EC.visibility_of_element_located(AccountPageLocators.PROFILE_LINK)
+        )
+
+        # ✅ явная проверка, что мы действительно в ЛК (профиль виден)
+        assert profile_link.is_displayed(), "Профиль в личном кабинете не отображается"
 
     def test_logout_from_account(self, driver):
         wait = WebDriverWait(driver, 10)
@@ -47,6 +52,7 @@ class TestAccount:
 
         register_user(driver, name, email, password)
 
+        # переходим в Личный кабинет
         wait.until(EC.element_to_be_clickable(MainPageLocators.PERSONAL_ACCOUNT)).click()
 
         # если редирект на логин — логинимся и снова открываем ЛК
@@ -57,5 +63,11 @@ class TestAccount:
         # выходим
         wait.until(EC.element_to_be_clickable(AccountPageLocators.EXIT_BUTTON)).click()
 
-        # проверяем, что вернулись на страницу логина (кнопка "Войти")
-        wait.until(EC.visibility_of_element_located(LoginPageLocators.SUBMIT))
+        # ждём кнопку "Войти" на странице логина
+        login_button = wait.until(
+            EC.visibility_of_element_located(LoginPageLocators.SUBMIT)
+        )
+
+        # ✅ явная проверка, что мы реально разлогинились и попали на /login
+        assert "/login" in driver.current_url, "После выхода не произошёл переход на страницу /login"
+        assert login_button.is_displayed(), "Кнопка 'Войти' не отображается после выхода"
