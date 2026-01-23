@@ -6,6 +6,10 @@ from locators import BASE_URL, RegisterPageLocators
 from helpers import generate_email, generate_password, generate_name
 
 
+REGISTER_BUTTON = (By.XPATH, "//button[contains(., 'Зарегистрироваться')]")
+PASSWORD_ERROR = (By.XPATH, "//*[contains(text(),'Некорректный пароль')]")
+
+
 class TestRegistration:
     def test_successful_registration(self, driver):
         driver.get(f"{BASE_URL}/register")
@@ -15,10 +19,10 @@ class TestRegistration:
         wait.until(EC.visibility_of_element_located(RegisterPageLocators.EMAIL)).send_keys(generate_email(domain="ya.ru"))
         wait.until(EC.visibility_of_element_located(RegisterPageLocators.PASSWORD)).send_keys(generate_password())
 
-        wait.until(EC.element_to_be_clickable(RegisterPageLocators.SUBMIT)).click()
+        wait.until(EC.element_to_be_clickable(REGISTER_BUTTON)).click()
 
         wait.until(EC.url_contains("/login"))
-        assert "/login" in driver.current_url, "После успешной регистрации не произошёл переход на /login"
+        assert "/login" in driver.current_url
 
     def test_registration_shows_error_for_short_password(self, driver):
         driver.get(f"{BASE_URL}/register")
@@ -28,9 +32,6 @@ class TestRegistration:
         wait.until(EC.visibility_of_element_located(RegisterPageLocators.EMAIL)).send_keys(generate_email(domain="ya.ru"))
         wait.until(EC.visibility_of_element_located(RegisterPageLocators.PASSWORD)).send_keys("12345")  # < 6
 
-        wait.until(EC.element_to_be_clickable(RegisterPageLocators.SUBMIT)).click()
+        wait.until(EC.element_to_be_clickable(REGISTER_BUTTON)).click()
 
-        error = wait.until(
-            EC.visibility_of_element_located((By.XPATH, "//*[contains(text(),'Некорректный пароль')]"))
-        )
-        assert error.is_displayed(), "Не появилось сообщение 'Некорректный пароль' при коротком пароле"
+        wait.until(EC.visibility_of_element_located(PASSWORD_ERROR))

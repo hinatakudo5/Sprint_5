@@ -1,11 +1,12 @@
 import pytest
 
-from locators import BASE_URL, MainPageLocators
 from pages.main_page import MainPage
 from pages.account_page import AccountPage
+from locators import MainPageLocators, BASE_URL
 
 
 class TestConstructor:
+
     def test_go_to_constructor_from_account(self, driver):
         account = AccountPage(driver)
         main = MainPage(driver)
@@ -41,6 +42,6 @@ class TestConstructor:
         main.tab_is_visible(tab_locator)
 
         if should_click:
-            main.open_tab(tab_locator, safe=True)
+            main.open_tab(tab_locator)
 
         main.tab_is_visible(active_tab_locator)

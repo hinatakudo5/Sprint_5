@@ -1,73 +1,53 @@
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-
-from locators import (
-    BASE_URL,
-    MainPageLocators,
-    AccountPageLocators,
-    LoginPageLocators,
-)
-from helpers import (
-    generate_name,
-    generate_email,
-    generate_password,
-    register_user,
-    login_user,
-)
+from helpers import generate_name, generate_email, generate_password, register_user, login_user
+from pages.account_page import AccountPage
+from pages.login_page import LoginPage
 
 
 class TestAccount:
     def test_go_to_personal_account(self, driver):
-        wait = WebDriverWait(driver, 10)
-
         name = generate_name()
         email = generate_email()
         password = generate_password()
 
-        # регистрация (после неё пользователь обычно уже авторизован)
         register_user(driver, name, email, password)
+        login_user(driver, email, password)
 
-        # переходим в Личный кабинет
-        wait.until(EC.element_to_be_clickable(MainPageLocators.PERSONAL_ACCOUNT)).click()
+        account = AccountPage(driver)
+        login = LoginPage(driver)
 
-        # если вдруг редиректнуло на логин (так бывает), логинимся и снова открываем ЛК
-        if "/login" in driver.current_url:
-            login_user(driver, email, password)
-            wait.until(EC.element_to_be_clickable(MainPageLocators.PERSONAL_ACCOUNT)).click()
+        # идем в ЛК самым стабильным путем
+        account.open_profile_via_header()
 
-        # ждём появления элемента профиля
-        profile_link = wait.until(
-            EC.visibility_of_element_located(AccountPageLocators.PROFILE_LINK)
+        # если вдруг откинуло на /login — логинимся и повторяем
+        if login.is_login_page():
+            login.login(email, password)
+            account.open_profile_via_header()
+
+        assert "/account" in account.current_url(), "Не открылась страница личного кабинета"
+        assert account.profile_is_visible() or account.exit_button_is_visible(), (
+            "Личный кабинет не открылся: не виден профиль/кнопка выхода"
         )
-
-        # ✅ явная проверка, что мы действительно в ЛК (профиль виден)
-        assert profile_link.is_displayed(), "Профиль в личном кабинете не отображается"
 
     def test_logout_from_account(self, driver):
-        wait = WebDriverWait(driver, 10)
-
         name = generate_name()
         email = generate_email()
         password = generate_password()
 
         register_user(driver, name, email, password)
+        login_user(driver, email, password)
 
-        # переходим в Личный кабинет
-        wait.until(EC.element_to_be_clickable(MainPageLocators.PERSONAL_ACCOUNT)).click()
+        account = AccountPage(driver)
+        login = LoginPage(driver)
 
-        # если редирект на логин — логинимся и снова открываем ЛК
-        if "/login" in driver.current_url:
-            login_user(driver, email, password)
-            wait.until(EC.element_to_be_clickable(MainPageLocators.PERSONAL_ACCOUNT)).click()
+        account.open_profile_via_header()
 
-        # выходим
-        wait.until(EC.element_to_be_clickable(AccountPageLocators.EXIT_BUTTON)).click()
+        if login.is_login_page():
+            login.login(email, password)
+            account.open_profile_via_header()
 
-        # ждём кнопку "Войти" на странице логина
-        login_button = wait.until(
-            EC.visibility_of_element_located(LoginPageLocators.SUBMIT)
-        )
+        assert "/account" in account.current_url(), "Перед выходом не открылся личный кабинет"
 
-        # ✅ явная проверка, что мы реально разлогинились и попали на /login
-        assert "/login" in driver.current_url, "После выхода не произошёл переход на страницу /login"
-        assert login_button.is_displayed(), "Кнопка 'Войти' не отображается после выхода"
+        account.logout()
+
+        assert "/login" in login.current_url(), "После выхода не произошёл переход на /login"
+        assert login.is_login_page(), "После выхода не отображается форма логина"
